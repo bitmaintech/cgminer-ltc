@@ -765,6 +765,7 @@ void *check_fan_thr(void *arg)
                 }
             }
         }
+        dev.fan_speed_low1 = (fan1Speed > fan0Speed) ? fan0Speed : fan1Speed;
         dev.fan_num = fan1_exist + fan0_exist;
         sleep(FANINT);
     }
@@ -867,14 +868,14 @@ void *check_miner_status(void *arg)
         //check_fan();
         set_PWM_according_to_temperature();
         timersub(&tv_send, &tv_send_job, &diff);
-        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP)
-            //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP
+            || dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150) || dev.fan_speed_low1 < 800)
         {
             stop = true;
-            if(dev.temp_top1 > MAX_TEMP)
-                //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+            if(dev.temp_top1 > MAX_TEMP
+                || dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150) || dev.fan_speed_low1 < 800)
             {
-                // status_error = true;
+
                 status_error = false;
                 once_error = true;
 
@@ -887,13 +888,20 @@ void *check_miner_status(void *arg)
                             applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
                         if(!loged)
                         {
-                            applog(LOG_ERR, "Temp Err! Please Check Fan! Will Disable PIC!");
+                            if(dev.temp_top1 > MAX_TEMP)
+                                applog(LOG_ERR, "Temp Err! Disable PIC!");
+                            if(dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+                                applog(LOG_ERR, "Fan Err! Disable PIC! MAX:%d MIN:%d",dev.fan_speed_top1,dev.fan_speed_low1);
                             loged = true;
                         }
                         pic_dac_ctrl(0);
                         pthread_mutex_unlock(&iic_mutex);
                     }
                 }
+            }
+            else
+            {
+                applog(LOG_ERR, "Net Err! lastest job more than 2 mins! waiting ...");
             }
         }
         else
@@ -1849,7 +1857,7 @@ READONCEMORE:
                         if(already_right[i][j] != true)
                         {
                             ++rightFlag;
-                            already_right[i][j] == true;
+                            already_right[i][j] = true;
                         }
                     }
                 }

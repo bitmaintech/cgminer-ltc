@@ -475,6 +475,7 @@ struct all_parameters
     uint8_t     fan_num;
     uint8_t     temp_num;
     uint32_t    fan_speed_top1;
+    uint32_t    fan_speed_low1;
     uint32_t    temp_top1;
     uint32_t    temp_top_i[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    temp_top1_last;
