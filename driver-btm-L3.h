@@ -3,7 +3,7 @@
 #define __DRIVER_BTM_L3_H__
 
 #include <poll.h>
-
+#include "config.h"
 
 #define GPIO_DEVICE_TEMPLATE    "/sys/class/gpio/gpio%d/value"
 #define TTY_DEVICE_TEMPLATE     "/dev/ttyO%d"
@@ -222,8 +222,6 @@ union REG_DATA
 // macro define about miner
 #define BITMAIN_MAX_CHAIN_NUM           4
 #define BM1485_CORE_NUM                 12
-
-
 #define BITMAIN_MAX_FAN_NUM             2
 #define BITMAIN_DEFAULT_ASIC_NUM        64
 #define MAX_RETURNED_NONCE_NUM          30
@@ -232,21 +230,22 @@ union REG_DATA
 #define MAX_NONCE_NUMBER_IN_FIFO        CHAIN_ASIC_NUM * (BITMAIN_MAX_CHAIN_NUM)*3
 #define BITMAIN_DEFAULT_BAUD            115200
 #define DEVICE_DIFF                     8
-
 #define CHECK_SYSTEM_TIME_GAP           10000           // 10s
 //fan
 #define PWM_PERIOD_NS                   100000
 #define MIN_FAN_NUM                     1
 #define MAX_FAN_SPEED                   4100
-#define MIN_PWM_PERCENT                 0
+#define MIN_PWM_PERCENT                 20
 #define MAX_PWM_PERCENT                 100
 #define TEMP_INTERVAL                   2
 #define MAX_TEMP                        85
 #define MAX_FAN_TEMP                    75
 #define MIN_FAN_TEMP                    35
 
-#define L3_P
-//#define L3
+#define FAN1_MAX_SPEED                  4300
+#define FAN2_MAX_SPEED                  3600
+#define FAN_SPEED_OK_PERCENT            (0.85)
+
 #ifdef L3
 #define CHAIN_ASIC_NUM                  36
 #define HAVE_TEMP                       0xe7

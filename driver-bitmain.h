@@ -23,9 +23,9 @@
 #define BITMAIN_RESET_FAULT_DECISECONDS 1
 #define BITMAIN_MINER_THREADS 1
 
-#define BITMAIN_IO_SPEED		115200
-#define BITMAIN_HASH_TIME_FACTOR	((float)1.67/0x32)
-#define BITMAIN_RESET_PITCH	(300*1000*1000)
+#define BITMAIN_IO_SPEED        115200
+#define BITMAIN_HASH_TIME_FACTOR    ((float)1.67/0x32)
+#define BITMAIN_RESET_PITCH (300*1000*1000)
 
 #define BITMAIN_TOKEN_TYPE_TXCONFIG 0x51
 #define BITMAIN_TOKEN_TYPE_TXTASK   0x52
@@ -119,173 +119,182 @@
 #define BITMAIN_SEND_FULL_SPACE    512
 #endif
 
-struct bitmain_packet_head {
-	uint8_t token_type;
-	uint8_t version;
-	uint16_t length;
+struct bitmain_packet_head
+{
+    uint8_t token_type;
+    uint8_t version;
+    uint16_t length;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_txconfig_token {
-	uint8_t token_type;
-	uint8_t version;
-	uint16_t length;
-	uint8_t reset                :1;
-	uint8_t fan_eft              :1;
-	uint8_t timeout_eft          :1;
-	uint8_t frequency_eft        :1;
-	uint8_t voltage_eft          :1;
-	uint8_t chain_check_time_eft :1;
-	uint8_t chip_config_eft      :1;
-	uint8_t hw_error_eft         :1;
-	uint8_t beeper_ctrl          :1;
-	uint8_t temp_over_ctrl       :1;
-	uint8_t fan_home_mode        :1;
-	uint8_t reserved1            :5;
-	uint8_t chain_check_time;
-	uint8_t reserved2;
+struct bitmain_txconfig_token
+{
+    uint8_t token_type;
+    uint8_t version;
+    uint16_t length;
+    uint8_t reset                :1;
+    uint8_t fan_eft              :1;
+    uint8_t timeout_eft          :1;
+    uint8_t frequency_eft        :1;
+    uint8_t voltage_eft          :1;
+    uint8_t chain_check_time_eft :1;
+    uint8_t chip_config_eft      :1;
+    uint8_t hw_error_eft         :1;
+    uint8_t beeper_ctrl          :1;
+    uint8_t temp_over_ctrl       :1;
+    uint8_t fan_home_mode        :1;
+    uint8_t reserved1            :5;
+    uint8_t chain_check_time;
+    uint8_t reserved2;
 
-	uint8_t chain_num;
-	uint8_t asic_num;
-	uint8_t fan_pwm_data;
-	uint8_t timeout_data;
+    uint8_t chain_num;
+    uint8_t asic_num;
+    uint8_t fan_pwm_data;
+    uint8_t timeout_data;
 
-	uint16_t frequency;
-	uint8_t voltage[2];
+    uint16_t frequency;
+    uint8_t voltage[2];
 
-	uint8_t reg_data[4];
-	uint8_t chip_address;
-	uint8_t reg_address;
-	uint16_t crc;
+    uint8_t reg_data[4];
+    uint8_t chip_address;
+    uint8_t reg_address;
+    uint16_t crc;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_txtask_work {
-	uint32_t work_id;
-	uint8_t midstate[32];
-	uint8_t data2[12];
+struct bitmain_txtask_work
+{
+    uint32_t work_id;
+    uint8_t midstate[32];
+    uint8_t data2[12];
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_txtask_token {
-	uint8_t token_type;
-	uint8_t version;
-	uint16_t length;
-	uint8_t new_block            :1;
-	uint8_t reserved1            :7;
-	uint8_t diff;
-	uint16_t net_diff;
-	struct bitmain_txtask_work works[BITMAIN_MAX_WORK_NUM];
-	uint16_t crc;
+struct bitmain_txtask_token
+{
+    uint8_t token_type;
+    uint8_t version;
+    uint16_t length;
+    uint8_t new_block            :1;
+    uint8_t reserved1            :7;
+    uint8_t diff;
+    uint16_t net_diff;
+    struct bitmain_txtask_work works[BITMAIN_MAX_WORK_NUM];
+    uint16_t crc;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_rxstatus_token {
-	uint8_t token_type;
-	uint8_t version;
-	uint16_t length;
-	uint8_t chip_status_eft      :1;
-	uint8_t detect_get           :1;
-	uint8_t reserved1            :6;
-	uint8_t reserved2[3];
+struct bitmain_rxstatus_token
+{
+    uint8_t token_type;
+    uint8_t version;
+    uint16_t length;
+    uint8_t chip_status_eft      :1;
+    uint8_t detect_get           :1;
+    uint8_t reserved1            :6;
+    uint8_t reserved2[3];
 
-	uint8_t chip_address;
-	uint8_t reg_address;
-	uint16_t crc;
+    uint8_t chip_address;
+    uint8_t reg_address;
+    uint16_t crc;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_rxstatus_data {
-	uint8_t data_type;
-	uint8_t version;
-	uint16_t length;
-	uint8_t chip_value_eft       :1;
-	uint8_t reserved1            :3;
-	uint8_t get_blk_num          :4;
-	uint8_t chain_num;
-	uint16_t fifo_space;
-	uint8_t hw_version[4];
-	uint8_t fan_num;
-	uint8_t temp_num;
-	uint16_t fan_exist;
-	uint32_t temp_exist;
-	uint32_t nonce_error;
-	uint32_t reg_value;
-	uint32_t chain_asic_exist[BITMAIN_MAX_CHAIN_NUM*8];
-	uint32_t chain_asic_status[BITMAIN_MAX_CHAIN_NUM*8];
-	uint8_t chain_asic_num[BITMAIN_MAX_CHAIN_NUM];
-	uint8_t temp[BITMAIN_MAX_TEMP_NUM];
-	uint8_t fan[BITMAIN_MAX_FAN_NUM];
-	uint16_t crc;
+struct bitmain_rxstatus_data
+{
+    uint8_t data_type;
+    uint8_t version;
+    uint16_t length;
+    uint8_t chip_value_eft       :1;
+    uint8_t reserved1            :3;
+    uint8_t get_blk_num          :4;
+    uint8_t chain_num;
+    uint16_t fifo_space;
+    uint8_t hw_version[4];
+    uint8_t fan_num;
+    uint8_t temp_num;
+    uint16_t fan_exist;
+    uint32_t temp_exist;
+    uint32_t nonce_error;
+    uint32_t reg_value;
+    uint32_t chain_asic_exist[BITMAIN_MAX_CHAIN_NUM*8];
+    uint32_t chain_asic_status[BITMAIN_MAX_CHAIN_NUM*8];
+    uint8_t chain_asic_num[BITMAIN_MAX_CHAIN_NUM];
+    uint8_t temp[BITMAIN_MAX_TEMP_NUM];
+    uint8_t fan[BITMAIN_MAX_FAN_NUM];
+    uint16_t crc;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_rxnonce_nonce {
-	uint32_t work_id;
-	uint32_t nonce;
+struct bitmain_rxnonce_nonce
+{
+    uint32_t work_id;
+    uint32_t nonce;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_rxnonce_data {
-	uint8_t data_type;
-	uint8_t version;
-	uint16_t length;
-	uint16_t fifo_space;
-	uint16_t diff;
-	uint64_t total_nonce_num;
-	struct bitmain_rxnonce_nonce nonces[BITMAIN_MAX_NONCE_NUM];
-	uint16_t crc;
+struct bitmain_rxnonce_data
+{
+    uint8_t data_type;
+    uint8_t version;
+    uint16_t length;
+    uint16_t fifo_space;
+    uint16_t diff;
+    uint64_t total_nonce_num;
+    struct bitmain_rxnonce_nonce nonces[BITMAIN_MAX_NONCE_NUM];
+    uint16_t crc;
 } __attribute__((packed, aligned(4)));
 
-struct bitmain_info {
-	int baud;
-	int chain_num;
-	int asic_num;
-	int chain_asic_num[BITMAIN_MAX_CHAIN_NUM];
-	uint32_t chain_asic_exist[BITMAIN_MAX_CHAIN_NUM*8];
-	uint32_t chain_asic_status[BITMAIN_MAX_CHAIN_NUM*8];
-	char chain_asic_status_t[BITMAIN_MAX_CHAIN_NUM][320];
-	int timeout;
-	int errorcount;
-	uint32_t nonce_error;
-	uint32_t last_nonce_error;
-	uint8_t reg_data[4];
+struct bitmain_info
+{
+    int baud;
+    int chain_num;
+    int asic_num;
+    int chain_asic_num[BITMAIN_MAX_CHAIN_NUM];
+    uint32_t chain_asic_exist[BITMAIN_MAX_CHAIN_NUM*8];
+    uint32_t chain_asic_status[BITMAIN_MAX_CHAIN_NUM*8];
+    char chain_asic_status_t[BITMAIN_MAX_CHAIN_NUM][320];
+    int timeout;
+    int errorcount;
+    uint32_t nonce_error;
+    uint32_t last_nonce_error;
+    uint8_t reg_data[4];
 
-	int fan_num;
-	int fan[BITMAIN_MAX_FAN_NUM];
-	int temp_num;
-	int temp[BITMAIN_MAX_TEMP_NUM];
+    int fan_num;
+    int fan[BITMAIN_MAX_FAN_NUM];
+    int temp_num;
+    int temp[BITMAIN_MAX_TEMP_NUM];
 
-	int temp_max;
-	int temp_avg;
-	int temp_history_count;
-	int temp_history_index;
-	int temp_sum;
-	int temp_old;
-	int fan_pwm;
-	uint64_t total_nonce_num;
+    int temp_max;
+    int temp_avg;
+    int temp_history_count;
+    int temp_history_index;
+    int temp_sum;
+    int temp_old;
+    int fan_pwm;
+    uint64_t total_nonce_num;
 
-	int frequency;
-	char frequency_t[256];
-	uint8_t voltage[2];
-	char voltage_t[8];
+    int frequency;
+    char frequency_t[256];
+    uint8_t voltage[2];
+    char voltage_t[8];
 
-	int diff;
+    int diff;
 
-	int no_matching_work;
-	//int matching_work[BITMAIN_DEFAULT_CHAIN_NUM];
+    int no_matching_work;
+    //int matching_work[BITMAIN_DEFAULT_CHAIN_NUM];
 
-	struct thr_info *thr;
-	pthread_t read_thr;
-	pthread_t write_thr;
-	pthread_mutex_t lock;
-	pthread_mutex_t qlock;
-	pthread_cond_t qcond;
-	cgsem_t write_sem;
-	int nonces;
-	int fifo_space;
-	int hw_version[4];
-	unsigned int last_work_block;
-	struct timeval last_status_time;
-	int send_full_space;
+    struct thr_info *thr;
+    pthread_t read_thr;
+    pthread_t write_thr;
+    pthread_mutex_t lock;
+    pthread_mutex_t qlock;
+    pthread_cond_t qcond;
+    cgsem_t write_sem;
+    int nonces;
+    int fifo_space;
+    int hw_version[4];
+    unsigned int last_work_block;
+    struct timeval last_status_time;
+    int send_full_space;
 
-	int idle;
-	bool reset;
-	bool overheat;
-	bool optimal;
+    int idle;
+    bool reset;
+    bool overheat;
+    bool optimal;
 };
 
 #define BITMAIN_READ_SIZE 12
@@ -311,4 +320,4 @@ extern char *set_bitmain_dev(char *arg);
 extern char *set_bitmain_fan(char *arg);
 
 #endif /* USE_BITMAIN */
-#endif	/* BITMAIN_H */
+#endif  /* BITMAIN_H */

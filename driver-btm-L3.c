@@ -684,6 +684,113 @@ static unsigned int getNum(const char* buffer)
 }
 
 
+
+void check_fan_speed(void)
+{
+
+    uint32_t fan0SpeedHist = 0;
+    uint32_t fan1SpeedHist = 0;
+    uint32_t fan0SpeedCur = 0;
+    uint32_t fan1SpeedCur = 0;
+    uint32_t fan0Speed = 0, fan0Speed_ok = 0;
+    uint32_t fan1Speed = 0, fan1Speed_ok = 0;
+    uint32_t fan0_exist = 0;
+    uint32_t fan1_exist = 0;
+    unsigned char ok_counter = 0;
+    char buffer[256] = "";
+    char* pos = NULL;
+    FILE* fanpfd = fopen(PROCFILENAME, "r");
+
+    if(fanpfd == NULL)
+    {
+        while(1)
+        {
+            applog(LOG_ERR, "open /proc/interrupt error");
+            sleep(3);
+        }
+    }
+
+    fseek(fanpfd, 0, SEEK_SET);
+
+    while(fgets(buffer, 256, fanpfd))
+    {
+        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+        {
+            applog(LOG_DEBUG, "find fan1.");
+            fan0SpeedHist = fan0SpeedCur = getNum(buffer);
+        }
+
+        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+        {
+            applog(LOG_DEBUG, "find fan2.");
+            fan1SpeedHist = fan1SpeedCur = getNum(buffer);
+        }
+    }
+
+    cgsleep_ms(500);
+
+    while(1)
+    {
+        applog(LOG_DEBUG, "test_loop = %d", ok_counter);
+
+        fseek(fanpfd, 0, SEEK_SET);
+
+        while(fgets(buffer, 256, fanpfd))
+        {
+            if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+            {
+                applog(LOG_DEBUG, "find fan1");
+                fan0SpeedCur = getNum(buffer);
+                if (fan0SpeedHist > fan0SpeedCur)
+                {
+                    fan0Speed = (0xffffffff - fan0SpeedHist + fan0SpeedCur);
+                }
+                else
+                {
+                    fan0Speed = ( fan0SpeedCur - fan0SpeedHist );
+                }
+                fan0Speed = fan0Speed * 60 / 2 * 2; // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan0SpeedHist = fan0SpeedCur;
+                applog(LOG_DEBUG, "fan1Speed = %d", fan0Speed);
+                if( fan0Speed > FAN1_MAX_SPEED * FAN_SPEED_OK_PERCENT)
+                {
+                    fan0Speed_ok++;
+                }
+            }
+
+            if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+            {
+                applog(LOG_DEBUG, "find fan2");
+                fan1SpeedCur = getNum(buffer);
+                if (fan1SpeedHist > fan1SpeedCur)
+                {
+                    fan1Speed = (0xffffffff - fan1SpeedHist + fan1SpeedCur);
+                }
+                else
+                {
+                    fan1Speed = ( fan1SpeedCur - fan1SpeedHist );
+                }
+                fan1SpeedHist = fan1SpeedCur;
+                fan1Speed = fan1Speed * 60 / 2 * 2; // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan1SpeedHist = fan1SpeedCur;
+                applog(LOG_DEBUG, "fan2Speed = %d", fan1Speed);
+                if( fan1Speed > FAN2_MAX_SPEED * FAN_SPEED_OK_PERCENT)
+                {
+                    fan1Speed_ok++;
+                }
+            }
+        }
+
+        if((fan0Speed_ok >= 3) && (fan1Speed_ok >= 3))
+        {
+            applog(LOG_WARNING, "%s OK", __FUNCTION__);
+            return;
+        }
+        cgsleep_ms(500);
+    }
+}
+
+
 void *check_fan_thr(void *arg)
 {
 
@@ -728,7 +835,7 @@ void *check_fan_thr(void *arg)
                 }
                 dev.fan_speed_value[0] = fan0Speed;
                 fan0SpeedHist = fan0SpeedCur;
-                if (dev.fan_speed_top1 <  fan0Speed)
+                //if (dev.fan_speed_top1 <  fan0Speed)
                 {
                     dev.fan_speed_top1 = fan0Speed;
                 }
@@ -759,24 +866,36 @@ void *check_fan_thr(void *arg)
                 }
 
                 dev.fan_speed_value[1] = fan1Speed;
-                if (dev.fan_speed_top1 <  fan1Speed)
+                //if (dev.fan_speed_top1 <  fan1Speed)
                 {
-                    dev.fan_speed_top1 = fan1Speed;
+                    dev.fan_speed_low1 = fan1Speed;
                 }
             }
         }
-        dev.fan_speed_low1 = (fan1Speed > fan0Speed) ? fan0Speed : fan1Speed;
+        //dev.fan_speed_low1 = (fan1Speed > fan0Speed) ? fan0Speed : fan1Speed;
         dev.fan_num = fan1_exist + fan0_exist;
         sleep(FANINT);
     }
 }
 
+inline int check_fan_ok()
+{
+    if(dev.fan_num < MIN_FAN_NUM)
+        return 1;
+    if(dev.fan_speed_top1 < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
+        return 2;
+    if(dev.fan_speed_low1 < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
+        return 3;
+    if(dev.fan_speed_top1 < 800 || dev.fan_speed_low1 <800)
+        return 4;
+    return 0;
+}
 void *check_miner_status(void *arg)
 {
     //asic status,fan,led
     struct timeval tv_start = {0, 0}, tv_end,tv_send;
     double ghs = 0;
-    int i = 0, j = 0;
+    int i = 0, j = 0, fan_ret;
     bool loged = false;
     cgtime(&tv_end);
 
@@ -868,15 +987,14 @@ void *check_miner_status(void *arg)
         //check_fan();
         set_PWM_according_to_temperature();
         timersub(&tv_send, &tv_send_job, &diff);
-        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP
-            || dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150) || dev.fan_speed_low1 < 800)
+        fan_ret = check_fan_ok();
+        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP || fan_ret != 0)
         {
             stop = true;
-            if(dev.temp_top1 > MAX_TEMP
-                || dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150) || dev.fan_speed_low1 < 800)
+            if(dev.temp_top1 > MAX_TEMP || fan_ret != 0)
             {
 
-                status_error = false;
+                status_error = true;
                 once_error = true;
 
                 for(i=0; i < BITMAIN_MAX_CHAIN_NUM; i++)
@@ -890,8 +1008,21 @@ void *check_miner_status(void *arg)
                         {
                             if(dev.temp_top1 > MAX_TEMP)
                                 applog(LOG_ERR, "Temp Err! Disable PIC!");
-                            if(dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
-                                applog(LOG_ERR, "Fan Err! Disable PIC! MAX:%d MIN:%d",dev.fan_speed_top1,dev.fan_speed_low1);
+                            switch (fan_ret)
+                            {
+                                case 1:
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
+                                    break;
+                                case 2:
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d ",dev.fan_speed_top1);
+                                    break;
+                                case 3:
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d ",dev.fan_speed_low1);
+                                    break;
+                                case 4:
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! MAX:%d MIN:%d",dev.fan_speed_top1,dev.fan_speed_low1);
+                                    break;
+                            }
                             loged = true;
                         }
                         pic_dac_ctrl(0);
@@ -1388,7 +1519,7 @@ void set_config(int fd,unsigned char mode, unsigned char asic_addr, unsigned cha
 
     cmd_buf[8] = CRC5(cmd_buf, 8*8);
 
-    applog(LOG_DEBUG, "Set config reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x" ,reg_addr,cmd_buf[0], cmd_buf[1], cmd_buf[2],
+    applog(LOG_DEBUG, "Set config reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x",reg_addr,cmd_buf[0], cmd_buf[1], cmd_buf[2],
            cmd_buf[3],cmd_buf[4], cmd_buf[5], cmd_buf[6], cmd_buf[7],cmd_buf[8]);
     L3_write(fd, cmd_buf, CONFIG_LENTH + 1);
 }
@@ -1521,7 +1652,7 @@ void set_auto_read_temp()
     regdata.general_iic_data.deviceaddr = 0x4c;
     regdata.general_iic_data.regaddr = 0x00;
     regdata.general_iic_data.autoreadtemp = 0x01;
-    int i , j;
+    int i, j;
     for ( i = 0; i < BITMAIN_MAX_CHAIN_NUM; ++i )
     {
         if ( dev.chain_exist[i] == 1 )
@@ -1545,7 +1676,7 @@ void SetTempRead(unsigned char pos)
     regdata.general_iic_data.deviceaddr = 0x4c;
     regdata.general_iic_data.regaddr = pos;
     regdata.general_iic_data.autoreadtemp = 0x00;
-    int i , j;
+    int i, j;
     for ( i = 0; i < BITMAIN_MAX_CHAIN_NUM; ++i )
     {
         if ( dev.chain_exist[i] == 1 )
@@ -1747,7 +1878,7 @@ static void SetAutoReadTemp(int asic_num, int chainid)
 
 void calibration_sensor_offset()
 {
-    int i , j , rightFlag;
+    int i, j, rightFlag;
     int8_t localTemp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
     int8_t remoteTemp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
     int8_t already_right[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
@@ -1843,7 +1974,7 @@ READONCEMORE:
                     {
                         applog(LOG_NOTICE, "Remote = 0 Chain %d chip %d local 0x%x remote 0x%x offset 0x%x ", i, j,localTemp[i][j],remoteTemp[i][j], m_offset[i][j]);
                         m_offset[i][j] += 30;   // -70 default is out of temp value.
-                        SetTempOffset( m_offset[i][j], j, i ,false);
+                        SetTempOffset( m_offset[i][j], j, i,false);
                     }
                     else if ( error_Limit > 2 )
                     {
@@ -2330,7 +2461,7 @@ void update_pic_program(void)
 
     for(i=0; i<pic_flash_length; i++)
     {
-        fgets(data_read, MAX_CHAR_NUM - 1 , pic_program_file);
+        fgets(data_read, MAX_CHAR_NUM - 1, pic_program_file);
         //printf("data_read[0]=%c, data_read[1]=%c, data_read[2]=%c, data_read[3]=%c\n", data_read[0], data_read[1], data_read[2], data_read[3]);
         data_int = strtoul(data_read, NULL, 16);
         //printf("data_int = 0x%04x\n", data_int);
@@ -2671,6 +2802,14 @@ rerun_all:
         }
         else
         {
+            if(status_error)
+            {
+                for(chain_id = 0; chain_id < BITMAIN_MAX_CHAIN_NUM; chain_id++)
+                {
+                    rate[chain_id] = 0;
+                    suffix_string_L3(rate[chain_id], (char * )displayed_rate[chain_id], sizeof(displayed_rate[chain_id]), 3,true);
+                }
+            }
             if(not_reg_data_time++ > 3)
             {
                 clear_register_value_buf();
@@ -2817,7 +2956,7 @@ static int get_patten_work(int id, int count, FILE * fps, int core)
     char str[MAX_CHAR_NUM] = {0};
     int subid = 0;
     int i;
-    while(fgets(str, MAX_CHAR_NUM - 1 , fps))
+    while(fgets(str, MAX_CHAR_NUM - 1, fps))
     {
         if(NULL == str)
         {
@@ -2839,7 +2978,7 @@ static int get_patten_work(int id, int count, FILE * fps, int core)
         if(NULL == temp) goto err;
         temp += 5;
         while(*temp == ' ') temp++;
-        s2hex((uint8_t *)(&new_work->work.nonce.nonce) ,(unsigned char *)temp, 8);
+        s2hex((uint8_t *)(&new_work->work.nonce.nonce),(unsigned char *)temp, 8);
         new_work->work.nonce.nonce = htonl(new_work->work.nonce.nonce);
         new_work->work.id = subid + core*count;
         applog(LOG_DEBUG, "asic %d wc %d nonce %08x", id, new_work->work.id, new_work->work.nonce.nonce);
@@ -3147,7 +3286,7 @@ bool test_board_core(struct bitmain_L3_info *info)
                 printf("Open test file %s error\n", data_file);
                 return -1;
             }
-            patten_num = get_patten_work(i, TEST_NUM, fp , j);
+            patten_num = get_patten_work(i, TEST_NUM, fp, j);
             fclose(fp);
         }
     }
@@ -3218,7 +3357,7 @@ bool test_board_core(struct bitmain_L3_info *info)
         print_result();
         if(patten_result)
             break;
-        applog(LOG_NOTICE,"%d" ,times);
+        applog(LOG_NOTICE,"%d",times);
     }
     return patten_result;
 }
@@ -3524,7 +3663,7 @@ check_asic_num:
     pthread_detach(read_temp_id->pth);
 
 #endif
-    sleep(2);
+    sleep(FANINT + 1);
 
 
 #if 1

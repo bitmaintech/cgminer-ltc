@@ -158,7 +158,7 @@ if HAS_BITMAIN_C5
 cgminer_SOURCES += driver-btm-c5.c driver-btm-c5.h sha2_c5.c sha2_c5.h
 endif
 
-if HAS_BITMAIN_L3
+if HAS_BITMAIN_LTC
 cgminer_SOURCES += driver-btm-L3.c driver-btm-L3.h 
 endif
 

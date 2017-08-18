@@ -164,18 +164,32 @@ if test "x$bitmain_c5" = xyes; then
 fi
 AM_CONDITIONAL([HAS_BITMAIN_C5], [test x$bitmain_c5 = xyes])
 
-bitmain_L3="no"
+bitmain_LTC="no"
 
-AC_ARG_ENABLE([bitmain_L3],
-	[AC_HELP_STRING([--enable-bitmain-L3],[Compile support for Bitmain L3(default disabled)])],
-	[bitmain_L3=$enableval]
+AC_ARG_ENABLE([bitmain_LTC],
+	[AC_HELP_STRING([--enable-bitmain-ltc],[Compile support for Bitmain L3(default disabled)])],
+	[bitmain_LTC=$enableval]
 	)
-if test "x$bitmain_L3" = xyes; then
-	AC_DEFINE([USE_BITMAIN_L3], [1], [Defined to 1 if Bitmain L3 support is wanted])
+AC_ARG_ENABLE([bitmain_l3],
+	[AC_HELP_STRING([--enable-bitmain_l3],[Compile support for Bitmain l3])],
+	[bitmain_l3=$enableval]
+	)
+AC_ARG_ENABLE([bitmain_l3p],
+	[AC_HELP_STRING([--enable-bitmain_l3p],[Compile support for Bitmain l3+])],
+	[bitmain_l3p=$enableval]
+	)
+if test "x$bitmain_LTC" = xyes; then
+	AC_DEFINE([USE_BITMAIN_LTC], [1], [Defined to 1 if Bitmain L3 support is wanted])
+	if test "x$bitmain_l3" = xyes; then
+        AC_DEFINE([L3], [1], [Defined to 1 for L3])
+    fi
+    if test "x$bitmain_l3p" = xyes; then
+        AC_DEFINE([L3_P], [1], [Defined to 1 for L3+])
+    fi
 	drivercount=x$drivercount
 	standalone="yes"
 fi
-AM_CONDITIONAL([HAS_BITMAIN_L3], [test x$bitmain_L3 = xyes])
+AM_CONDITIONAL([HAS_BITMAIN_LTC], [test x$bitmain_LTC = xyes])
 
 avalon="no"
 
@@ -491,7 +505,7 @@ else
 	want_libbitfury=false
 fi
 
-if test x$avalon2$avalon4$hashratio$bitmain_c5$bitmain_L3 != xnononono; then
+if test x$avalon2$avalon4$hashratio$bitmain_c5$bitmain_LTC != xnononono; then
 	want_crc16=true
 else
 	want_crc16=false
@@ -691,10 +705,10 @@ else
 	echo "  Bitmain.C5...: Disabled"
 fi
 
-if test "x$bitmain_L3" = xyes; then
-	echo "  Bitmain.L3...: Enabled"
+if test "x$bitmain_LTC" = xyes; then
+	echo "  Bitmain.LTC...: Enabled"
 else
-	echo "  Bitmain.L3...: Disabled"
+	echo "  Bitmain.LTC...: Disabled"
 fi
 
 if test "x$avalon" = xyes; then
@@ -820,7 +834,7 @@ else
 fi
 
 #Add any new device to this, along with a no on the end of the test
-if test "x$avalon$avalon2$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$bmsc$bitmain$sp10$sp30$bitmain_c5$bitmain_L3" = xnononononononononononononononononononononono; then
+if test "x$avalon$avalon2$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$bmsc$bitmain$sp10$sp30$bitmain_c5$bitmain_LTC" = xnononononononononononononononononononononono; then
 	echo
 	AC_MSG_ERROR([No mining devices configured in])
 	echo

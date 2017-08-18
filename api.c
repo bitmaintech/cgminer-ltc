@@ -2786,13 +2786,13 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
 
     // stop hashmeter() changing some while copying
     mutex_lock(&hash_lock);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_LTC)
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
 #endif
 
     utility = total_accepted / ( total_secs ? total_secs : 1 ) * 60;
 
-#if defined USE_BITMAIN_L3
+#if defined USE_BITMAIN_LTC
     ghs = total_mhashes_done / 1 / total_secs;
 #else
     ghs = total_mhashes_done / 1000 / total_secs;
@@ -2801,7 +2801,7 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     work_utility = total_diff1 / ( total_secs ? total_secs : 1 ) * 60;
 
     root = api_add_elapsed(root, "Elapsed", &(total_secs), true);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_LTC)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);
@@ -3440,7 +3440,7 @@ static int itemstats(struct io_data *io_data, int i, char *id, struct cgminer_st
 {
     struct api_data *root = NULL;
     double ghs;
-#if defined USE_BITMAIN_L3
+#if defined USE_BITMAIN_LTC
     ghs = total_mhashes_done / 1 / total_secs;
 #else
     ghs = total_mhashes_done / 1000 / total_secs;
@@ -3452,7 +3452,7 @@ static int itemstats(struct io_data *io_data, int i, char *id, struct cgminer_st
     root = api_add_timeval(root, "Wait", &(stats->getwork_wait), false);
     root = api_add_timeval(root, "Max", &(stats->getwork_wait_max), false);
     root = api_add_timeval(root, "Min", &(stats->getwork_wait_min), false);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_LTC)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);

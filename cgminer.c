@@ -113,7 +113,7 @@ char *curly = ":D";
 #include "driver-btm-c5.h"
 #endif
 
-#ifdef USE_BITMAIN_L3
+#ifdef USE_BITMAIN_LTC
 #include "driver-btm-L3.h"
 #endif
 
@@ -987,7 +987,7 @@ static char *set_quota(char *arg)
     pool = add_url();
     setup_url(pool, url);
     pool->quota = quota;
-    applog(LOG_INFO, "Setting pool %d to quota %d", pool->pool_no, pool->quota);
+    applog(LOG_DEBUG, "Setting pool %d to quota %d", pool->pool_no, pool->quota);
     adjust_quota_gcd();
 
     return NULL;
@@ -1508,7 +1508,7 @@ static struct opt_table opt_config_table[] =
     "Record work test data to file"),
 #endif
 
-#ifdef USE_BITMAIN_L3
+#ifdef USE_BITMAIN_LTC
     OPT_WITHOUT_ARG("--bitmain-fan-ctrl",
     opt_set_bool, &opt_bitmain_fan_ctrl,
     "Enable bitmain miner fan controlling"),
@@ -2124,7 +2124,7 @@ static char *opt_verusage_and_exit(const char *extra)
 #ifdef USE_BITMAIN_C5
            "bitmain_c5 "
 #endif
-#ifdef USE_BITMAIN_L3
+#ifdef USE_BITMAIN_LTC
            "bitmain_L3 "
 #endif
 #ifdef USE_AVALON
@@ -2674,7 +2674,7 @@ static void gbt_merkle_bins(struct pool *pool, json_t *transaction_arr)
             applog(LOG_DEBUG, "MH%d %s",i, hashhex);
         }
     }
-    applog(LOG_INFO, "Stored %d transactions from pool %d", pool->transactions,
+    applog(LOG_DEBUG, "Stored %d transactions from pool %d", pool->transactions,
            pool->pool_no);
 }
 
@@ -3845,7 +3845,7 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
         char logline[256];
 
         get_statline(logline, sizeof(logline), cgpu);
-        applog(LOG_INFO, "%s", logline);
+        applog(LOG_DEBUG, "%s", logline);
     }
 
     json_decref(val);
@@ -4977,7 +4977,7 @@ uint64_t share_diff(const struct work *work)
     cg_wunlock(&control_lock);
 
     if (unlikely(new_best))
-        applog(LOG_INFO, "New best share: %s", best_share);
+        applog(LOG_DEBUG, "New best share: %s", best_share);
 
     return ret;
 }
@@ -5360,7 +5360,7 @@ static void set_blockdiff(const struct work *work)
     {
         suffix_string(ddiff, block_diff, sizeof(block_diff), 0);
         current_diff = ddiff;
-        applog(LOG_NOTICE, "Network diff set to %s", block_diff);
+        applog(LOG_DEBUG, "Network diff set to %s", block_diff);
     }
 }
 
@@ -5458,7 +5458,7 @@ static bool test_work_current(struct work *work)
             {
                 /* Work is from new block and pool is up now
                  * current. */
-                applog(LOG_INFO, "Pool %d now up to date", pool->pool_no);
+                applog(LOG_DEBUG, "Pool %d now up to date", pool->pool_no);
                 memcpy(pool->prev_block, bedata, 32);
             }
         }
@@ -5887,7 +5887,7 @@ static void set_lowprio(void)
     int ret = nice(10);
 
     if (!ret)
-        applog(LOG_INFO, "Unable to set thread to low priority");
+        applog(LOG_DEBUG, "Unable to set thread to low priority");
 #else
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif
@@ -6731,7 +6731,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
                 fflush(stdout);
             }
             else
-                applog(LOG_INFO, "%s", logline);
+                applog(LOG_DEBUG, "%s", logline);
         }
     }
     else
@@ -6835,7 +6835,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
             fflush(stdout);
         }
         else
-            applog(LOG_INFO, "%s", statusline);
+            applog(LOG_DEBUG, "%s", statusline);
     }
 }
 
@@ -6850,7 +6850,7 @@ static void stratum_share_result(json_t *val, json_t *res_val, json_t *err_val,
     srdiff = now_t - sshare->sshare_sent;
     if (opt_debug || srdiff > 0)
     {
-        applog(LOG_INFO, "Pool %d stratum share result lag time %d seconds",
+        applog(LOG_DEBUG, "Pool %d stratum share result lag time %d seconds",
                work->pool->pool_no, srdiff);
     }
     show_hash(work, hashshow);
@@ -7357,7 +7357,7 @@ static void *stratum_sthread(void *userdata)
             ssdiff = sshare->sshare_sent - sshare->sshare_time;
             if (opt_debug || ssdiff > 0)
             {
-                applog(LOG_INFO, "Pool %d stratum share submission lag time %d seconds",
+                applog(LOG_DEBUG, "Pool %d stratum share submission lag time %d seconds",
                        pool->pool_no, ssdiff);
             }
         }
@@ -7384,7 +7384,7 @@ static void *longpoll_thread(void *userdata);
 
 static bool stratum_works(struct pool *pool)
 {
-    applog(LOG_INFO, "Testing pool %d stratum %s", pool->pool_no, pool->stratum_url);
+    applog(LOG_DEBUG, "Testing pool %d stratum %s", pool->pool_no, pool->stratum_url);
     check_extranonce_option(pool, pool->stratum_url);
     if (!extract_sockaddr(pool->stratum_url, &pool->sockaddr_url, &pool->stratum_port))
         return false;
@@ -7484,7 +7484,7 @@ static bool pool_active(struct pool *pool, bool pinging)
     if (pool->has_gbt)
         applog(LOG_DEBUG, "Retrieving block template from pool %s", pool->rpc_url);
     else
-        applog(LOG_INFO, "Testing pool %s", pool->rpc_url);
+        applog(LOG_DEBUG, "Testing pool %s", pool->rpc_url);
 
     /* This is the central point we activate stratum when we can */
 retry_stratum:

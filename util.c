@@ -2793,7 +2793,7 @@ static bool setup_stratum_socket(struct pool *pool)
         break;
     }
     if (p == NULL) {
-        applog(LOG_INFO, "Failed to connect to stratum on %s:%s",
+        applog(LOG_DEBUG, "Failed to connect to stratum on %s:%s",
                sockaddr_url, sockaddr_port);
         freeaddrinfo(servinfo);
         return false;
@@ -2873,7 +2873,7 @@ out:
 
 void suspend_stratum(struct pool *pool)
 {
-    applog(LOG_INFO, "Closing socket for stratum pool %d", pool->pool_no);
+    applog(LOG_DEBUG, "Closing socket for stratum pool %d", pool->pool_no);
 
     mutex_lock(&pool->stratum_lock);
     __suspend_stratum(pool);
