@@ -104,7 +104,7 @@ char displayed_rate[BITMAIN_MAX_CHAIN_NUM][16];
 unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
-#define FANINT 5
+#define FANINT 1
 #define FAN0 "256"
 #define FAN1 "254"
 #define PROCFILENAME "/proc/interrupts"
@@ -878,17 +878,29 @@ void *check_fan_thr(void *arg)
     }
 }
 
+int fan_error_num = 0;
 inline int check_fan_ok()
 {
-    if(dev.fan_num < MIN_FAN_NUM)
-        return 1;
+    int ret = 0
+              if(dev.fan_num < MIN_FAN_NUM)
+                  ret = 1;
     if(dev.fan_speed_top1 < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
-        return 2;
+        ret = 2;
     if(dev.fan_speed_low1 < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
-        return 3;
+        ret = 3;
     if(dev.fan_speed_top1 < 800 || dev.fan_speed_low1 <800)
-        return 4;
-    return 0;
+        ret = 4;
+    if(ret != 0)
+    {
+        fan_error_num++;
+        if(fan_error_num > (FANINT * 2 + 1))
+            return ret;
+    }
+    else
+    {
+        fan_error_num = 0;
+        return 0;
+    }
 }
 void *check_miner_status(void *arg)
 {
@@ -1014,10 +1026,10 @@ void *check_miner_status(void *arg)
                                     applog(LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
                                     break;
                                 case 2:
-                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d ",dev.fan_speed_top1);
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d pwm %d ",dev.fan_speed_top1,dev.pwm_percent);
                                     break;
                                 case 3:
-                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d ",dev.fan_speed_low1);
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d pwm %d ",dev.fan_speed_low1,dev.pwm_percent);
                                     break;
                                 case 4:
                                     applog(LOG_ERR, "Fan Err! Disable PIC! MAX:%d MIN:%d",dev.fan_speed_top1,dev.fan_speed_low1);
