@@ -50,6 +50,7 @@
 
 struct thr_info *read_nonce_reg_id;                 // thread id for read nonce and register
 struct thr_info *check_miner_status_id;                  // thread id for check system
+struct thr_info *check_fan_id;
 struct thr_info *read_temp_id;
 struct thr_info *read_hash_rate;
 struct thr_info *pic_heart_beat;
@@ -104,7 +105,7 @@ char displayed_rate[BITMAIN_MAX_CHAIN_NUM][16];
 unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
-#define FANINT 5
+#define FANINT 1
 #define FAN0 "256"
 #define FAN1 "254"
 #define PROCFILENAME "/proc/interrupts"
@@ -878,17 +879,29 @@ void *check_fan_thr(void *arg)
     }
 }
 
+int fan_error_num = 0;
 inline int check_fan_ok()
 {
-    if(dev.fan_num < MIN_FAN_NUM)
-        return 1;
+    int ret = 0
+              if(dev.fan_num < MIN_FAN_NUM)
+                  ret = 1;
     if(dev.fan_speed_top1 < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
-        return 2;
+        ret = 2;
     if(dev.fan_speed_low1 < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
-        return 3;
+        ret = 3;
     if(dev.fan_speed_top1 < 800 || dev.fan_speed_low1 <800)
-        return 4;
-    return 0;
+        ret = 4;
+    if(ret != 0)
+    {
+        fan_error_num++;
+        if(fan_error_num > (FANINT * 2 + 1))
+            return ret;
+    }
+    else
+    {
+        fan_error_num = 0;
+        return 0;
+    }
 }
 void *check_miner_status(void *arg)
 {
@@ -1014,10 +1027,10 @@ void *check_miner_status(void *arg)
                                     applog(LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
                                     break;
                                 case 2:
-                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d ",dev.fan_speed_top1);
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d pwm %d ",dev.fan_speed_top1,dev.pwm_percent);
                                     break;
                                 case 3:
-                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d ",dev.fan_speed_low1);
+                                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d pwm %d ",dev.fan_speed_low1,dev.pwm_percent);
                                     break;
                                 case 4:
                                     applog(LOG_ERR, "Fan Err! Disable PIC! MAX:%d MIN:%d",dev.fan_speed_top1,dev.fan_speed_low1);
@@ -3374,7 +3387,7 @@ int bitmain_L3_init(struct bitmain_L3_info *info)
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
-    sprintf(g_miner_version, "1.0.1.1");
+    sprintf(g_miner_version, "1.0.1.2");
 
     set_PWM(100);
 
@@ -3644,9 +3657,9 @@ check_asic_num:
     set_asic_ticket_mask((1<<(DEVICE_DIFF)) - 1);
     cgsleep_ms(10);
 
-    check_miner_status_id = calloc(1,sizeof(struct thr_info));
+    check_fan_id = calloc(1,sizeof(struct thr_info));
 
-    if(thr_info_create(check_miner_status_id, NULL, check_fan_thr, NULL))
+    if(thr_info_create(check_fan_id, NULL, check_fan_thr, check_fan_id))
     {
         applog(LOG_DEBUG,"%s: create thread for check miner_status", __FUNCTION__);
         return -5;
@@ -3667,6 +3680,7 @@ check_asic_num:
 
 
 #if 1
+    check_miner_status_id = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(check_miner_status_id, NULL, check_miner_status, check_miner_status_id))
     {
         applog(LOG_DEBUG,"%s: create thread for check miner_status", __FUNCTION__);
