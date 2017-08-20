@@ -882,9 +882,9 @@ void *check_fan_thr(void *arg)
 int fan_error_num = 0;
 inline int check_fan_ok()
 {
-    int ret = 0
-              if(dev.fan_num < MIN_FAN_NUM)
-                  ret = 1;
+    int ret = 0;
+    if(dev.fan_num < MIN_FAN_NUM)
+        ret = 1;
     if(dev.fan_speed_top1 < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
         ret = 2;
     if(dev.fan_speed_low1 < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
