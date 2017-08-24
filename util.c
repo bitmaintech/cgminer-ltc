@@ -656,7 +656,7 @@ json_t *json_rpc_call(CURL *curl, const char *url,
 
     rc = curl_easy_perform(curl);
     if (rc) {
-        applog(LOG_INFO, "HTTP request failed: %s", curl_err_str);
+        applog(LOG_DEBUG, "HTTP request failed: %s", curl_err_str);
         goto err_out;
     }
 
@@ -704,7 +704,7 @@ json_t *json_rpc_call(CURL *curl, const char *url,
 
     val = JSON_LOADS(all_data.buf, &err);
     if (!val) {
-        applog(LOG_INFO, "JSON decode failed(%d): %s", err.line, err.text);
+        applog(LOG_DEBUG, "JSON decode failed(%d): %s", err.line, err.text);
 
         if (opt_protocol)
             applog(LOG_DEBUG, "JSON protocol response:\n%s", (char *)(all_data.buf));
@@ -733,7 +733,7 @@ json_t *json_rpc_call(CURL *curl, const char *url,
         else
             s = strdup("(unknown reason)");
 
-        applog(LOG_INFO, "JSON-RPC call failed: %s", s);
+        applog(LOG_DEBUG, "JSON-RPC call failed: %s", s);
 
         free(s);
 
@@ -2151,10 +2151,10 @@ static bool parse_diff(struct pool *pool, json_t *val)
         int idiff = diff;
 
         if ((double)idiff == diff)
-            applog(LOG_NOTICE, "Pool %d difficulty changed to %d",
+            applog(LOG_DEBUG, "Pool %d difficulty changed to %d",
                    pool->pool_no, idiff);
         else
-            applog(LOG_NOTICE, "Pool %d difficulty changed to %.1f",
+            applog(LOG_DEBUG, "Pool %d difficulty changed to %.1f",
                    pool->pool_no, diff);
     } else
         applog(LOG_DEBUG, "Pool %d difficulty set to %f", pool->pool_no,
@@ -2170,12 +2170,12 @@ static bool parse_extranonce(struct pool *pool, json_t *val)
 
     nonce1 = json_array_string(val, 0);
     if (!valid_hex(nonce1)) {
-        applog(LOG_INFO, "Failed to get valid nonce1 in parse_extranonce");
+        applog(LOG_DEBUG, "Failed to get valid nonce1 in parse_extranonce");
         goto out;
     }
     n2size = json_integer_value(json_array_get(val, 1));
     if (n2size < 2 || n2size > 16) {
-        applog(LOG_INFO, "Failed to get valid n2size in parse_extranonce");
+        applog(LOG_DEBUG, "Failed to get valid n2size in parse_extranonce");
         free(nonce1);
         goto out;
     }
@@ -2189,7 +2189,7 @@ static bool parse_extranonce(struct pool *pool, json_t *val)
         quithere(1, "Failed to calloc pool->nonce1bin");
     hex2bin(pool->nonce1bin, pool->nonce1, pool->n1_len);
     pool->n2size = n2size;
-    applog(LOG_NOTICE, "Pool %d confirmed mining.extranonce.subscribe with extranonce1 %s extran2size %d",
+    applog(LOG_DEBUG, "Pool %d confirmed mining.extranonce.subscribe with extranonce1 %s extran2size %d",
            pool->pool_no, pool->nonce1, pool->n2size);
     cg_wunlock(&pool->data_lock);
     return true;
@@ -2306,7 +2306,7 @@ static bool show_message(struct pool *pool, json_t *val)
     msg = (char *)json_string_value(json_array_get(val, 0));
     if (!msg)
         return false;
-    applog(LOG_NOTICE, "Pool %d message: %s", pool->pool_no, msg);
+    applog(LOG_DEBUG, "Pool %d message: %s", pool->pool_no, msg);
     return true;
 }
 
@@ -2322,7 +2322,7 @@ bool parse_method(struct pool *pool, char *s)
 
     val = JSON_LOADS(s, &err);
     if (!val) {
-        applog(LOG_INFO, "JSON decode failed(%d): %s", err.line, err.text);
+        applog(LOG_DEBUG, "JSON decode failed(%d): %s", err.line, err.text);
         goto out;
     }
 
@@ -2340,7 +2340,7 @@ bool parse_method(struct pool *pool, char *s)
         else
             ss = strdup("(unknown reason)");
 
-        applog(LOG_INFO, "JSON-RPC method decode failed: %s", ss);
+        applog(LOG_DEBUG, "JSON-RPC method decode failed: %s", ss);
         free(ss);
         goto out_decref;
     }
@@ -2352,7 +2352,7 @@ bool parse_method(struct pool *pool, char *s)
 #ifdef USE_BITMAIN_C5
     if (!strncasecmp(buf, "mining.multi_version", 20)) {
         pool->support_vil = true;
-        applog(LOG_INFO,"Pool support multi version");
+        applog(LOG_DEBUG,"Pool support multi version");
         ret = parse_version(pool, params);
         goto out_decref;
     }
@@ -2393,7 +2393,7 @@ bool parse_method(struct pool *pool, char *s)
     }
 
     if (!strncasecmp(buf, "mining.ping", 11)) {
-        applog(LOG_INFO, "Pool %d ping", pool->pool_no);
+        applog(LOG_DEBUG, "Pool %d ping", pool->pool_no);
         ret = send_pong(pool, val);
         goto out_decref;
     }
@@ -2439,7 +2439,7 @@ bool auth_stratum(struct pool *pool)
             ss = json_dumps(err_val, JSON_INDENT(3));
         else
             ss = strdup("(unknown reason)");
-        applog(LOG_INFO, "pool %d JSON stratum auth failed: %s", pool->pool_no, ss);
+        applog(LOG_DEBUG, "pool %d JSON stratum auth failed: %s", pool->pool_no, ss);
         free(ss);
 
         suspend_stratum(pool);
@@ -2448,7 +2448,7 @@ bool auth_stratum(struct pool *pool)
     }
 
     ret = true;
-    applog(LOG_INFO, "Stratum authorisation success for pool %d", pool->pool_no);
+    applog(LOG_DEBUG, "Stratum authorisation success for pool %d", pool->pool_no);
     pool->probed = true;
     successful_connect = true;
     if (opt_suggest_diff) {
@@ -2738,7 +2738,7 @@ static bool setup_stratum_socket(struct pool *pool)
                    sockaddr_url, sockaddr_port);
             pool->probed = true;
         } else {
-            applog(LOG_INFO, "Failed to getaddrinfo for %s:%s",
+            applog(LOG_DEBUG, "Failed to getaddrinfo for %s:%s",
                    sockaddr_url, sockaddr_port);
         }
         return false;
@@ -2885,7 +2885,7 @@ void extranonce_subscribe_stratum(struct pool *pool)
     if(pool->extranonce_subscribe) {
         char s[RBUFSIZE];
         sprintf(s,"{\"id\": %d, \"method\": \"mining.extranonce.subscribe\", \"params\": []}", swork_id++);
-        applog(LOG_INFO, "Send extranonce.subscribe for stratum pool %d", pool->pool_no);
+        applog(LOG_DEBUG, "Send extranonce.subscribe for stratum pool %d", pool->pool_no);
         stratum_send(pool, s, strlen(s));
     }
 }
@@ -2937,7 +2937,7 @@ resend:
     val = JSON_LOADS(sret, &err);
     free(sret);
     if (!val) {
-        applog(LOG_INFO, "JSON decode failed(%d): %s", err.line, err.text);
+        applog(LOG_DEBUG, "JSON decode failed(%d): %s", err.line, err.text);
         goto out;
     }
 
@@ -2953,7 +2953,7 @@ resend:
         else
             ss = strdup("(unknown reason)");
 
-        applog(LOG_INFO, "JSON-RPC decode failed: %s", ss);
+        applog(LOG_DEBUG, "JSON-RPC decode failed: %s", ss);
 
         free(ss);
 
@@ -2965,13 +2965,13 @@ resend:
         applog(LOG_DEBUG, "Failed to get sessionid in initiate_stratum");
     nonce1 = json_array_string(res_val, 1);
     if (!valid_hex(nonce1)) {
-        applog(LOG_INFO, "Failed to get valid nonce1 in initiate_stratum");
+        applog(LOG_DEBUG, "Failed to get valid nonce1 in initiate_stratum");
         free(sessionid);
         goto out;
     }
     n2size = json_integer_value(json_array_get(res_val, 2));
     if (n2size < 2 || n2size > 16) {
-        applog(LOG_INFO, "Failed to get valid n2size in initiate_stratum");
+        applog(LOG_DEBUG, "Failed to get valid n2size in initiate_stratum");
         free(sessionid);
         free(nonce1);
         goto out;

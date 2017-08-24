@@ -2899,7 +2899,7 @@ static void stats(struct cgpu_info *cgpu, struct timeval *tv_start, struct timev
 		int offset = 0;
 
 		if (extrams >= USB_TMO_2) {
-			applog(LOG_INFO, "%s%i: TIMEOUT %s took %dms but was %dms",
+			applog(LOG_DEBUG, "%s%i: TIMEOUT %s took %dms but was %dms",
 					cgpu->drv->name, cgpu->device_id,
 					usb_cmdname(cmd), totms, timeout) ;
 			offset = 2;
@@ -4165,7 +4165,7 @@ fail:
 		return false;
 	}
 	if (flock(fd, LOCK_EX | LOCK_NB)) {
-		applog(LOG_INFO, "%s USB failed to get '%s' - device in use",
+		applog(LOG_DEBUG, "%s USB failed to get '%s' - device in use",
 		       dname, name);
 		close(fd);
 		return false;

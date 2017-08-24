@@ -83,7 +83,7 @@ extern void rev(unsigned char *s, size_t l);
 extern void cg_logwork(struct work *work, unsigned char *nonce_bin, bool ok);
 
 pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+pthread_mutex_t work_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t reg_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t nonce_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -456,8 +456,9 @@ void *bitmain_scanhash(void *arg)
 
         memcpy((uint8_t *)&nonce,nonce_bin,4);
         nonce = htobe32(nonce);
-
+        pthread_mutex_lock(&work_queue_mutex);
         work = info->work_queue[work_id];
+        pthread_mutex_unlock(&work_queue_mutex);
         if(work)
         {
             submitfull = 0;
@@ -827,8 +828,8 @@ void *check_fan_thr(void *arg)
                 if ( fan0Speed )
                 {
                     fan0_exist = 1;
-                    if( fan0Speed > MAX_FAN_SPEED)
-                        fan0Speed = MAX_FAN_SPEED;
+                    if( fan0Speed > 6600)
+                        fan0Speed = 6600;
                 }
                 else
                 {
@@ -858,8 +859,8 @@ void *check_fan_thr(void *arg)
                 if ( fan1Speed )
                 {
                     fan1_exist = 1;
-                    if( fan1Speed > MAX_FAN_SPEED)
-                        fan1Speed = MAX_FAN_SPEED;
+                    if( fan1Speed > 6600)
+                        fan1Speed = 6600;
                 }
                 else
                 {
@@ -867,7 +868,6 @@ void *check_fan_thr(void *arg)
                 }
 
                 dev.fan_speed_value[1] = fan1Speed;
-                //if (dev.fan_speed_top1 <  fan1Speed)
                 {
                     dev.fan_speed_low1 = fan1Speed;
                 }
@@ -880,21 +880,35 @@ void *check_fan_thr(void *arg)
 }
 
 int fan_error_num = 0;
+
 inline int check_fan_ok()
 {
     int ret = 0;
     if(dev.fan_num < MIN_FAN_NUM)
+    {
         ret = 1;
+        goto err;
+    }
     if(dev.fan_speed_top1 < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
+    {
         ret = 2;
+        goto err;
+    }
     if(dev.fan_speed_low1 < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
+    {
         ret = 3;
-    if(dev.fan_speed_top1 < 800 || dev.fan_speed_low1 <800)
+        goto err;
+    }
+    if((dev.pwm_percent == 100) && (dev.fan_speed_top1 < (FAN1_MAX_SPEED * 90 / 100) || dev.fan_speed_low1 < (FAN2_MAX_SPEED * 90 / 100)))
+    {
         ret = 4;
+        goto err;
+    }
+err:
     if(ret != 0)
     {
         fan_error_num++;
-        if(fan_error_num > (FANINT * 2 + 1))
+        if(fan_error_num > (FANINT * 10))
             return ret;
     }
     else
@@ -903,6 +917,7 @@ inline int check_fan_ok()
         return 0;
     }
 }
+
 void *check_miner_status(void *arg)
 {
     //asic status,fan,led
@@ -911,7 +926,7 @@ void *check_miner_status(void *arg)
     int i = 0, j = 0, fan_ret;
     bool loged = false;
     cgtime(&tv_end);
-
+    cgtime(&tv_send);
     copy_time(&tv_start, &tv_end);
     copy_time(&tv_send_job,&tv_send);
     bool stop = false;
@@ -1004,12 +1019,10 @@ void *check_miner_status(void *arg)
         if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP || fan_ret != 0)
         {
             stop = true;
-            if(dev.temp_top1 > MAX_TEMP || fan_ret != 0)
+            status_error = true;
+            if((!once_error) && (dev.temp_top1 > MAX_TEMP || fan_ret != 0))
             {
-
-                status_error = true;
                 once_error = true;
-
                 for(i=0; i < BITMAIN_MAX_CHAIN_NUM; i++)
                 {
                     if(dev.chain_exist[i] == 1)
@@ -1204,7 +1217,9 @@ void *L3_fill_work(void *usrdata)
         {
             cgtime(&last_send);
         more_work:
+            pthread_mutex_lock(&work_queue_mutex);
             work = get_work(thr, thr->id);
+            pthread_mutex_unlock(&work_queue_mutex);
             if (unlikely(!work))
             {
                 goto more_work;
@@ -1226,6 +1241,7 @@ void *L3_fill_work(void *usrdata)
             workdata.crc16 = (workdata.crc16 >> 8) | ((workdata.crc16 & 0xff) << 8);
             memcpy((unsigned char *)&workdata + sendlen - 2,&workdata.crc16,2);
 
+            pthread_mutex_lock(&work_queue_mutex);
             if(info->work_queue[workid])
             {
                 free_work(info->work_queue[workid]);
@@ -1233,6 +1249,8 @@ void *L3_fill_work(void *usrdata)
             }
             if ( workid >= BITMAIN_MAX_QUEUE_NUM ) applog(LOG_ERR, "WorkID Error![%d]", workid);
             info->work_queue[workid] = copy_work(work);
+            pthread_mutex_unlock(&work_queue_mutex);
+
             applog(LOG_DEBUG, "ChainID[%d] Wirte Work", chainid);
             L3_write(info->dev_fd[chainid], (uint8_t *)&workdata, sendlen);
             // cg_runlock(&info->update_lock);
@@ -3387,7 +3405,7 @@ int bitmain_L3_init(struct bitmain_L3_info *info)
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
-    sprintf(g_miner_version, "1.0.1.2");
+    sprintf(g_miner_version, "1.0.1.3");
 
     set_PWM(100);
 
