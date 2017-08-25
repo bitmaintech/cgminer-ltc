@@ -106,8 +106,8 @@ unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
 #define FANINT 1
-#define FAN0 "256"
-#define FAN1 "254"
+#define FAN0 "256:"
+#define FAN1 "254:"
 #define PROCFILENAME "/proc/interrupts"
 
 
